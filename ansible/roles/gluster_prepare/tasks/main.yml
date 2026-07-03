@@ -1,0 +1,63 @@
+---
+- name: Esperar a que cloud-init termine sus procesos en segundo plano
+  command: cloud-init status --wait
+  changed_when: false
+
+- name: Forzar el uso de IPv4 en APT para evitar timeouts lentos
+  copy:
+    dest: /etc/apt/apt.conf.d/99force-ipv4
+    content: 'Acquire::ForceIPv4 "true";'
+    mode: '0644'
+
+- name: Actualizar cache de apt
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Instalar paquetes necesarios
+  apt:
+    name:
+      - glusterfs-server
+      - xfsprogs
+    state: present
+
+- name: Iniciar y habilitar servicio glusterd
+  service:
+    name: glusterd
+    state: started
+    enabled: yes
+
+- name: Configurar /etc/hosts para resolución de nombres por hostname
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ hostvars[item]['ansible_host'] }} {{ item }}"
+    state: present
+  loop: "{{ groups['gluster_nodes'] }}"
+
+- name: Crear sistema de archivos XFS en el segundo disco (vdb o sdb)
+  filesystem:
+    fstype: xfs
+    dev: /dev/vdb
+
+- name: Crear directorio de montaje para el brick
+  file:
+    path: /data/gluster
+    state: directory
+
+- name: Montar el disco de datos
+  mount:
+    path: /data/gluster
+    src: /dev/vdb
+    fstype: xfs
+    state: mounted
+
+- name: Crear subdirectorio para el brick
+  file:
+    path: /data/gluster/brick1
+    state: directory
+    mode: '0775'
+
+- name: Reiniciar servicio glusterd para aplicar cambios
+  service:
+    name: glusterd
+    state: restarted

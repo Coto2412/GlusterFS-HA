@@ -1,0 +1,12 @@
+[gluster_nodes]
+%{ for index, ip in ips ~}
+node${index + 1} ansible_host=${ip} ansible_user=jdelpino ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ServerAliveInterval=60'
+%{ endfor ~}
+
+[gluster_primary]
+node1 ansible_host=${ips[0]} ansible_user=jdelpino ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ServerAliveInterval=60'
+
+[gluster_clients]
+%{ for index, ip in ips ~}
+node${index + 1} ansible_host=${ip} ansible_user=jdelpino ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ServerAliveInterval=60'
+%{ endfor ~}

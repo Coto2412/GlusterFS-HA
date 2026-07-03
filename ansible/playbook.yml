@@ -1,0 +1,24 @@
+---
+- name: Configurar confianza SSH mutua
+  hosts: gluster_nodes
+  become: no
+  roles:
+    - ssh_setup
+
+- name: Preparar Nodos y Discos para GlusterFS
+  hosts: gluster_nodes
+  become: yes
+  roles:
+    - gluster_prepare
+
+- name: Configurar Cluster GlusterFS y Crear Volumen
+  hosts: gluster_nodes
+  become: yes
+  roles:
+    - gluster_cluster
+
+- name: Montar volumen GlusterFS en los clientes
+  hosts: gluster_clients
+  become: yes
+  roles:
+    - gluster_client

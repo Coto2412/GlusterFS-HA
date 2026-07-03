@@ -1,0 +1,65 @@
+---
+- name: Detener glusterd
+  service:
+    name: glusterd
+    state: stopped
+
+- name: Limpiar el directorio de estado de glusterd para forzar una conexión limpia
+  file:
+    path: /var/lib/glusterd
+    state: absent
+
+- name: Recrear el directorio de estado
+  file:
+    path: /var/lib/glusterd
+    state: directory
+
+- name: Iniciar glusterd limpio
+  service:
+    name: glusterd
+    state: started
+
+- name: Pausa para asegurar que glusterd inició correctamente
+  pause:
+    seconds: 5
+
+- name: Full mesh peer probe usando hostnames (todos contra todos)
+  command: "gluster peer probe {{ item }}"
+  loop: "{{ groups['gluster_nodes'] }}"
+  when: item != inventory_hostname
+  register: peer_probe
+  changed_when: false
+  failed_when: false
+
+- name: Dar tiempo a la formación del clúster y sincronización de glusterd
+  pause:
+    seconds: 30
+  run_once: true
+  delegate_to: "{{ groups['gluster_primary'][0] }}"
+
+- name: Verificar que todos los nodos estén reportados como conectados y listos
+  command: gluster peer status
+  register: peer_status
+  until: "peer_status.stdout.count('State: Peer in Cluster') == (groups['gluster_nodes'] | length - 1)"
+  retries: 15
+  delay: 10
+  run_once: true
+  delegate_to: "{{ groups['gluster_primary'][0] }}"
+
+- name: Crear volumen GlusterFS replicado (Replica 3) usando hostnames
+  gluster_volume:
+    state: present
+    name: gv0
+    bricks: "/data/gluster/brick1"
+    replicas: 3
+    cluster: "{{ groups['gluster_nodes'] }}"
+    force: yes
+  run_once: true
+  delegate_to: "{{ groups['gluster_primary'][0] }}"
+
+- name: Iniciar el volumen GlusterFS
+  gluster_volume:
+    state: started
+    name: gv0
+  run_once: true
+  delegate_to: "{{ groups['gluster_primary'][0] }}"

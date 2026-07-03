@@ -1,0 +1,12 @@
+---
+- name: Crear punto de montaje para el volumen
+  file:
+    path: /mnt/gluster_vol
+    state: directory
+
+- name: Montar el volumen replicado de GlusterFS localmente
+  mount:
+    name: /mnt/gluster_vol
+    src: "localhost:/gv0"
+    fstype: glusterfs
+    state: mounted

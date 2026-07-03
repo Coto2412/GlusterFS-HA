@@ -1,0 +1,35 @@
+---
+- name: Asegurar que el directorio .ssh existe con los permisos correctos
+  file:
+    path: ~/.ssh
+    state: directory
+    mode: '0700'
+
+- name: Generar par de claves SSH en cada nodo (si no existe)
+  user:
+    name: jdelpino
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+    ssh_key_file: .ssh/id_rsa
+
+- name: Leer la clave pública generada de cada nodo
+  command: cat ~/.ssh/id_rsa.pub
+  register: ssh_pub_keys
+  changed_when: false
+
+- name: Intercambiar y autorizar las claves públicas entre todos los nodos
+  authorized_key:
+    user: jdelpino
+    state: present
+    key: "{{ hostvars[item]['ssh_pub_keys']['stdout'] }}"
+  loop: "{{ groups['gluster_nodes'] }}"
+
+- name: Configurar el cliente SSH interno para no pedir confirmación de fingerprint
+  copy:
+    dest: ~/.ssh/config
+    content: |
+      Host node1 node2 node3 192.168.122.*
+          StrictHostKeyChecking no
+          UserKnownHostsFile=/dev/null
+          LogLevel ERROR
+    mode: '0600'

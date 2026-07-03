@@ -1,0 +1,14 @@
+# Terraform
+terraform/.terraform*
+terraform/terraform.tfstate*
+terraform/*.tfplan
+
+# Ansible
+ansible/inventory.ini
+ansible/*.retry
+
+# Scripts locales
+*.log
+.DS_Store
+
+README_EXPLICATIVO.md
